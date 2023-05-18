@@ -1,13 +1,25 @@
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.temporal.WeekFields;
 
-public class App extends JFrame implements ActionListener, ComponentListener {
+public class App extends JFrame implements ActionListener, ComponentListener, FocusListener {
     private JLabel labelID, labelNombre, labelAntiguedad, labelTasa, labelSalarioBase, labelTipoContrato, labelPuesto,
-            labelHoras;
+            labelHoras, labelFecha, labelPeriodo;
     private JTextField textID, textNombre, textAntiguedad, textTasa, textSalarioBase, textTipoContrato, textPuesto,
             textHoras;
     private JButton botonCalcularSalario, botonMostrarEmpleados, botonIngresarEmpleados;
+    private JFrame panelMostrar, panelIngresar;
+    private Statement stmt;
+    private JTable tabla;
+    private DefaultTableModel modelo;
+    private JPanel paneltabla;
 
     public static void main(String[] args) {
         new App();
@@ -15,12 +27,19 @@ public class App extends JFrame implements ActionListener, ComponentListener {
 
     public App() {
         super("Nomina de empleados");
+        interfaz();
+        eventos();
+    }
+
+    private void interfaz() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(700, 600);
+        setSize(900, 600);
         setLocationRelativeTo(null);
         setLayout(null);
-        setMinimumSize(new Dimension(600, 500));
-        addComponentListener(this);
+        setMinimumSize(new Dimension(850, 500));
+        paneltabla = new JPanel();
+        panelIngresar = new JFrame("Ingresar Empleados");
+        panelMostrar = new JFrame("Mostrar Empleados");
         labelID = new JLabel("Ingresa el Id");
         textID = new JTextField();
         labelNombre = new JLabel("Nombre:");
@@ -37,19 +56,31 @@ public class App extends JFrame implements ActionListener, ComponentListener {
         textTasa = new JTextField(30);
         labelHoras = new JLabel("Horas Trabajadas:");
         textHoras = new JTextField(20);
-
+        labelFecha = new JLabel("Periodo de fecha:");
+        labelPeriodo = new JLabel(fecha());
         // botones
         botonCalcularSalario = new JButton("Calcular salario");
         add(botonCalcularSalario);
-        botonCalcularSalario.addActionListener(this);
 
         botonMostrarEmpleados = new JButton("Mostrar empleados");
         add(botonMostrarEmpleados);
-        botonMostrarEmpleados.addActionListener(this);
 
         botonIngresarEmpleados = new JButton("Añadir empleados");
         add(botonIngresarEmpleados);
-        botonIngresarEmpleados.addActionListener(this);
+
+        Inicioseccion inicio1 = new Inicioseccion("empresa", this);
+        stmt = inicio1.getStmt();
+
+        modelo = new DefaultTableModel(0, 11);
+        modelo.setColumnIdentifiers(
+                new Object[] { "ID", "Nombre", "Fecha Contratacion", "Celular", "Domicilio",
+                        "Puesto", "Tipo Contrato", "Salario Base", "Estado", "Vacaciones",
+                        "Email" });
+        tabla = new JTable(modelo);
+        tabla.setEnabled(false);
+        tabla.setRowHeight(30);
+        paneltabla.add(new JScrollPane(tabla));
+        paneltabla.setLayout(new BoxLayout(paneltabla, 1));
 
         textNombre.setEnabled(false);
         textAntiguedad.setEnabled(false);
@@ -57,6 +88,35 @@ public class App extends JFrame implements ActionListener, ComponentListener {
         textTipoContrato.setEnabled(false);
         textPuesto.setEnabled(false);
         textTasa.setEnabled(false);
+        panelIngresar.setSize(700, 700);
+        panelMostrar.setSize(1100, 600);
+        panelIngresar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        panelMostrar.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        panelIngresar.setResizable(false);
+        panelIngresar.setLocationRelativeTo(null);
+        panelMostrar.setLocationRelativeTo(null);
+        Font font = new Font("Open Sans", Font.PLAIN, 13);
+        labelID.setFont(font);
+        labelNombre.setFont(font);
+        labelAntiguedad.setFont(font);
+        labelTasa.setFont(font);
+        labelSalarioBase.setFont(font);
+        labelTipoContrato.setFont(font);
+        labelPuesto.setFont(font);
+        labelHoras.setFont(font);
+        labelFecha.setFont(font);
+        labelPeriodo.setFont(font);
+        textID.setFont(font);
+        textNombre.setFont(font);
+        textAntiguedad.setFont(font);
+        textTasa.setFont(font);
+        textSalarioBase.setFont(font);
+        textTipoContrato.setFont(font);
+        textPuesto.setFont(font);
+        textHoras.setFont(font);
+        botonCalcularSalario.setFont(font);
+        botonMostrarEmpleados.setFont(font);
+        botonIngresarEmpleados.setFont(font);
         add(labelID);
         add(textID);
         add(labelNombre);
@@ -73,38 +133,81 @@ public class App extends JFrame implements ActionListener, ComponentListener {
         add(textPuesto);
         add(labelHoras);
         add(textHoras);
+        add(labelFecha);
+        add(labelPeriodo);
         setVisible(true);
     }
 
+    private void eventos() {
+        addComponentListener(this);
+        botonMostrarEmpleados.addActionListener(this);
+        botonIngresarEmpleados.addActionListener(this);
+        botonCalcularSalario.addActionListener(this);
+        textID.addFocusListener(this);
+    }
+
+    private String fecha() {
+        int numeroSemana = 19; // Número de semana deseado
+        int anio = 2022; // Año deseado
+        // Obtener la fecha correspondiente al número de semana y año especificados
+        LocalDate fecha = LocalDate.now().with(WeekFields.ISO.weekOfYear(), numeroSemana)
+                .with(WeekFields.ISO.weekBasedYear(), anio);
+        System.out.println("Fecha correspondiente a la semana " + numeroSemana + " del año " + anio + ": " + fecha);
+
+        LocalDate fechaActual = LocalDate.now();
+        LocalDate fechaInicial, fechaFinal;
+        if (fechaActual.getDayOfMonth() < 15) {
+            fechaInicial = fechaActual.withDayOfMonth(15).minusMonths(1);
+            int ultimoDiaMes = fechaInicial.lengthOfMonth();
+            fechaFinal = fechaInicial.withDayOfMonth(ultimoDiaMes);
+        } else {
+            fechaInicial = fechaActual.withDayOfMonth(1);
+            fechaFinal = fechaActual.withDayOfMonth(15);
+        }
+        return fechaInicial + " a " + fechaFinal;
+    }
+
     public void actionPerformed(ActionEvent e) {
-        // if (e.getSource() == botonGuardarEmpleado) {
-        // // Aquí se guardaría la información del empleado en la base de datos
-        // // utilizando los valores en los campos de texto
-        // } else if (e.getSource() == botonGuardarHoras) {
-        // // Aquí se guardaría el registro de horas trabajadas del empleado en la
-        // // base de datos utilizando los valores en los campos de texto
-        // } else if (e.getSource() == botonCalcularSalario) {
-        // // Aquí se calcularía el salario bruto del empleado utilizando los valores
-        // // en los campos de texto y se mostraría en un cuadro de diálogo
-        // int salarioBase = Integer.parseInt(textSalarioBase.getText());
-        // int tasaSalario = Integer.parseInt(textPuesto.getText());
-        // int horasTrabajadas = Integer.parseInt(textHoras.getText());
-        // int salarioBruto = salarioBase + (tasaSalario * horasTrabajadas);
-        // JOptionPane.showMessageDialog(this, "El salario bruto del empleado es: " +
-        // salarioBruto);
-        // } else if (e.getSource() == botonMostrarEmpleados) {
-        // // Aquí se mostrarían los empleados guardados en la base de datos en el área
-        // // de texto para que el usuario los pueda ver
-        // // Podría ser algo así:
-        // // areaTextoEmpleados.setText(""); // Para limpiar el área de texto antes de
-        // // mostrar los empleados
-        // // String empleados = ""; // Aquí se concatenarían los datos de los empleados
-        // // while (/* Recorrer la lista de empleados guardados en la base de datos */)
-        // {
-        // // // Concatenar los datos del empleado actual a la variable "empleados"
-        // // }
-        // // areaTextoEmpleados.setText(empleados);
-        // }
+        if (e.getSource() == botonCalcularSalario) {
+            CalcularSalario();
+            return;
+        }
+        if (e.getSource() == botonIngresarEmpleados) {
+            IngresarEmpleados();
+            return;
+        }
+        if (e.getSource() == botonMostrarEmpleados) {
+            MostrarEmpleados();
+            return;
+        }
+    }
+
+    private void CalcularSalario() {
+
+    }
+
+    private void IngresarEmpleados() {
+        panelIngresar.setVisible(true);
+    }
+
+    private void MostrarEmpleados() {
+        panelMostrar.add(paneltabla);
+        panelMostrar.setVisible(true);
+        modelo.setNumRows(0);
+        try {
+            ResultSet resultSet = stmt.executeQuery(
+                    "select e.id,e.Nombre, FechaContratacion, Celular, Domicilio, p.Nombre, TipoContrato, SalarioBase, Estado, SemanasVacaciones, CorreoElectronico from empleado e inner join puesto p on e.idPuesto = p.id");
+            while (resultSet.next()) {
+                modelo.addRow(new Object[] { resultSet.getInt(1), resultSet.getString(2),
+                        resultSet.getString(3),
+                        resultSet.getString(4), resultSet.getString(5), resultSet.getString(6),
+                        resultSet.getString(7), resultSet.getString(8), resultSet.getString(9),
+                        resultSet.getString(10), resultSet.getString(11) });
+            }
+            revalidate();
+        } catch (SQLException e) {
+            System.out.println(e);
+        }
     }
 
     @Override
@@ -126,6 +229,8 @@ public class App extends JFrame implements ActionListener, ComponentListener {
         textTasa.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
         labelHoras.setBounds(getAncho(0.05), getAltoo(0.05) + (cont += 35), getAncho(0.1) + 20, 30);
         textHoras.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
+        labelFecha.setBounds(getAncho(0.05), getAltoo(0.05) + (cont += 35), getAncho(0.1) + 20, 30);
+        labelPeriodo.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
         botonCalcularSalario.setBounds(getAncho(0.15) + 20, getAltoo(0.15) + cont, getAncho(0.20), 30);
         botonMostrarEmpleados.setBounds(getAncho(0.40) + 20, getAltoo(0.15) + cont, getAncho(0.20), 30);
         botonIngresarEmpleados.setBounds(getAncho(0.65) + 20, getAltoo(0.15) + cont, getAncho(0.20), 30);
@@ -153,5 +258,17 @@ public class App extends JFrame implements ActionListener, ComponentListener {
     @Override
     public void componentHidden(ComponentEvent e) {
 
+    }
+
+    @Override
+    public void focusGained(FocusEvent e) {
+
+    }
+
+    @Override
+    public void focusLost(FocusEvent e) {
+        if (e.getSource() == textID) {
+            return;
+        }
     }
 }
