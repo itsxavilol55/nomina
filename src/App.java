@@ -1,6 +1,5 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.ResultSet;
@@ -71,7 +70,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
         Inicioseccion inicio1 = new Inicioseccion("empresa", this);
         stmt = inicio1.getStmt();
-
+        panelIngresar.setStmt(stmt);
         modelo = new DefaultTableModel(0, 11);
         modelo.setColumnIdentifiers(
                 new Object[] { "ID", "Nombre", "Fecha Contratacion", "Celular", "Domicilio",
@@ -276,7 +275,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     @Override
     public void focusLost(FocusEvent e) {
-        if (e.getSource() == textID) {
+        if (e.getSource() == textID && textID.getText().length() > 0) {
             try {
                 ResultSet resultSet = stmt.executeQuery(
                         "select e.id,e.Nombre, FechaContratacion, p.Nombre, TipoContrato, " +

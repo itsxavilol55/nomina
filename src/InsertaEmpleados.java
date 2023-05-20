@@ -1,6 +1,9 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class InsertaEmpleados extends JFrame implements ActionListener, ComponentListener {
     private JLabel labelNombre, labelFechaContratacion, labelCelular, labelDomicilio, labelIdPuesto,
@@ -8,6 +11,7 @@ public class InsertaEmpleados extends JFrame implements ActionListener, Componen
     private JTextField textNombre, textFechaContratacion, textCelular, textDomicilio, textIdPuesto,
             textTipoContrato, textSalarioBase, textEstado, textSemanasVacaciones, textCorreoElectronico;
     private JButton botonInsertar;
+    private Statement stmt;
 
     public InsertaEmpleados() {
         setTitle("Insertar Empleado");
@@ -27,14 +31,14 @@ public class InsertaEmpleados extends JFrame implements ActionListener, Componen
         textTipoContrato = new JTextField();
         labelSalarioBase = new JLabel("Salario Base:");
         textSalarioBase = new JTextField();
-        labelEstado = new JLabel("Estado:");
+        labelEstado = new JLabel("Estado:(Activo o Baja)");
         textEstado = new JTextField();
         labelSemanasVacaciones = new JLabel("Semanas de Vacaciones:");
         textSemanasVacaciones = new JTextField();
         labelCorreoElectronico = new JLabel("Correo Electrónico:");
         textCorreoElectronico = new JTextField();
         botonInsertar = new JButton("Insertar");
-
+        botonInsertar.addActionListener(this);
         add(labelNombre);
         add(textNombre);
         add(labelFechaContratacion);
@@ -109,6 +113,29 @@ public class InsertaEmpleados extends JFrame implements ActionListener, Componen
 
     @Override
     public void actionPerformed(ActionEvent e) {
+        String nombre = textNombre.getText();
+        String fechaContratacion = textFechaContratacion.getText();
+        String celular = textCelular.getText();
+        String domicilio = textDomicilio.getText();
+        int idPuesto = Integer.parseInt(textIdPuesto.getText());
+        String tipoContrato = textTipoContrato.getText();
+        float salarioBase = Float.parseFloat(textSalarioBase.getText());
+        String estado = textEstado.getText();
+        String semanasVacaciones = textSemanasVacaciones.getText();
+        String correoElectronico = textCorreoElectronico.getText();
+        String sql = "INSERT INTO Empleado  VALUES ('"
+                + nombre + "', '" + fechaContratacion + "', '" + celular + "', '" + domicilio + "', " + idPuesto + ", '"
+                + tipoContrato + "', " + salarioBase + ", '" + estado + "', '" + semanasVacaciones + "', '"
+                + correoElectronico + "')";
+        try {
+            stmt.executeUpdate(sql);
+            JOptionPane.showMessageDialog(null, "Empleado Insertado Correctamente");
+        } catch (SQLException err) {
+            JOptionPane.showMessageDialog(null, "Empleado no fue Insertado Correctamente");
+        }
+    }
 
+    public void setStmt(Statement stmt) {
+        this.stmt = stmt;
     }
 }
