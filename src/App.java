@@ -15,7 +15,8 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     private JTextField textID, textNombre, textAntiguedad, textTasa, textSalarioBase, textTipoContrato, textPuesto,
             textHoras;
     private JButton botonCalcularSalario, botonMostrarEmpleados, botonIngresarEmpleados;
-    private JFrame panelMostrar, panelIngresar;
+    private JFrame panelMostrar;
+    private InsertaEmpleados panelIngresar;
     private Statement stmt;
     private JTable tabla;
     private DefaultTableModel modelo;
@@ -38,7 +39,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         setLayout(null);
         setMinimumSize(new Dimension(850, 500));
         paneltabla = new JPanel();
-        panelIngresar = new JFrame("Ingresar Empleados");
+        panelIngresar = new InsertaEmpleados();
         panelMostrar = new JFrame("Mostrar Empleados");
         labelID = new JLabel("Ingresa el Id");
         textID = new JTextField();
@@ -136,6 +137,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         add(labelFecha);
         add(labelPeriodo);
         setVisible(true);
+        ajustaMedidas();
     }
 
     private void eventos() {
@@ -204,7 +206,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
                         resultSet.getString(7), resultSet.getString(8), resultSet.getString(9),
                         resultSet.getString(10), resultSet.getString(11) });
             }
-            revalidate();
+            panelMostrar.revalidate();
         } catch (SQLException e) {
             System.out.println(e);
         }
@@ -212,6 +214,10 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     @Override
     public void componentResized(ComponentEvent e) {
+        ajustaMedidas();
+    }
+
+    private void ajustaMedidas() {
         int cont = 0;
         labelID.setBounds(getAncho(0.05), getAltoo(0.05), getAncho(0.1) + 20, 30);
         textID.setBounds(getAncho(0.15) + 20, getAltoo(0.05), getAncho(0.25) - 20, 30);
@@ -235,6 +241,9 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         botonMostrarEmpleados.setBounds(getAncho(0.40) + 20, getAltoo(0.15) + cont, getAncho(0.20), 30);
         botonIngresarEmpleados.setBounds(getAncho(0.65) + 20, getAltoo(0.15) + cont, getAncho(0.20), 30);
         revalidate();
+        validate();
+        repaint();
+        update(this.getGraphics());
     }
 
     private int getAncho(double d) {
@@ -268,6 +277,23 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     @Override
     public void focusLost(FocusEvent e) {
         if (e.getSource() == textID) {
+            try {
+                ResultSet resultSet = stmt.executeQuery(
+                        "select e.id,e.Nombre, FechaContratacion, p.Nombre, TipoContrato, " +
+                                "SalarioBase,TasaSalario " +
+                                "from empleado e inner join puesto p on e.idPuesto = p.id WHERE e.id="
+                                + textID.getText());
+                resultSet.next();
+                textNombre.setText(resultSet.getString(2));
+                textAntiguedad.setText(resultSet.getString(3));
+                textSalarioBase.setText(resultSet.getString(6));
+                textTipoContrato.setText(resultSet.getString(5));
+                textPuesto.setText(resultSet.getString(4));
+                textTasa.setText(resultSet.getString(7));
+                revalidate();
+            } catch (SQLException err) {
+                JOptionPane.showMessageDialog(null, "Error. No se Encontro el empleado con este ID");
+            }
             return;
         }
     }

@@ -71,15 +71,14 @@ public class Inicioseccion extends JFrame implements ActionListener {
         conexion c = new conexion(bdname, txtuser.getText(), txtpassword.getText());
         if (c.getStmt() != null) {
             stmt = c.getStmt();
-            setVisible(false);
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException ee) {
-                ee.printStackTrace();
+            while (c.getStmt() == null) {
+                // Espera activa hasta que el stmt no sea nulo
             }
+            setVisible(false);
             vista.setVisible(true);
             vista.revalidate();
             vista.validate();
+            vista.repaint();
             vista.update(vista.getGraphics());
         }
     }
