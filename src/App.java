@@ -6,13 +6,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.time.Year;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
+import java.util.ArrayList;
 
 public class App extends JFrame implements ActionListener, ComponentListener, FocusListener {
     private JLabel labelID, labelNombre, labelAntiguedad, labelTasa, labelSalarioBase, labelTipoContrato, labelPuesto,
-            labelHoras, labelFecha, labelPeriodo;
+            labelHoras, labelFecha, labelPeriodo, labelFestivos;
     private JTextField textID, textNombre, textAntiguedad, textTasa, textSalarioBase, textTipoContrato, textPuesto,
-            textHoras;
+            textHoras, textFestivos;
     private JButton botonCalcularSalario, botonMostrarEmpleados, botonIngresarEmpleados;
     private JFrame panelMostrar;
     private InsertaEmpleados panelIngresar;
@@ -20,6 +23,10 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     private JTable tabla;
     private DefaultTableModel modelo;
     private JPanel paneltabla;
+    private String vacaciones, antiguedadEmp;
+    private LocalDate fechaInicial, fechaFinal;
+    private ArrayList<LocalDate> dates = new ArrayList<>();
+    private int year;
 
     public static void main(String[] args) {
         new App();
@@ -27,6 +34,11 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     public App() {
         super("Nomina de empleados");
+        year = LocalDate.now().getYear();
+        dates.add(LocalDate.of(year, 3, 15));
+        dates.add(LocalDate.of(year, 6, 15));
+        dates.add(LocalDate.of(year, 9, 15));
+        dates.add(LocalDate.of(year, 12, 15));
         interfaz();
         eventos();
     }
@@ -56,6 +68,8 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         textTasa = new JTextField(30);
         labelHoras = new JLabel("Horas Trabajadas:");
         textHoras = new JTextField(20);
+        labelFestivos = new JLabel("Festivos trabajados:");
+        textFestivos = new JTextField(20);
         labelFecha = new JLabel("Periodo de fecha:");
         labelPeriodo = new JLabel(fecha());
         // botones
@@ -95,6 +109,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         panelIngresar.setResizable(false);
         panelIngresar.setLocationRelativeTo(null);
         panelMostrar.setLocationRelativeTo(null);
+        textFestivos.setText("0");
         Font font = new Font("Open Sans", Font.PLAIN, 13);
         labelID.setFont(font);
         labelNombre.setFont(font);
@@ -106,6 +121,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         labelHoras.setFont(font);
         labelFecha.setFont(font);
         labelPeriodo.setFont(font);
+        labelFestivos.setFont(font);
         textID.setFont(font);
         textNombre.setFont(font);
         textAntiguedad.setFont(font);
@@ -114,6 +130,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         textTipoContrato.setFont(font);
         textPuesto.setFont(font);
         textHoras.setFont(font);
+        textFestivos.setFont(font);
         botonCalcularSalario.setFont(font);
         botonMostrarEmpleados.setFont(font);
         botonIngresarEmpleados.setFont(font);
@@ -133,6 +150,8 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         add(textPuesto);
         add(labelHoras);
         add(textHoras);
+        add(textFestivos);
+        add(labelFestivos);
         add(labelFecha);
         add(labelPeriodo);
         setVisible(true);
@@ -148,15 +167,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     }
 
     private String fecha() {
-        int numeroSemana = 19; // Número de semana deseado
-        int anio = 2022; // Año deseado
-        // Obtener la fecha correspondiente al número de semana y año especificados
-        LocalDate fecha = LocalDate.now().with(WeekFields.ISO.weekOfYear(), numeroSemana)
-                .with(WeekFields.ISO.weekBasedYear(), anio);
-        System.out.println("Fecha correspondiente a la semana " + numeroSemana + " del año " + anio + ": " + fecha);
-
         LocalDate fechaActual = LocalDate.now();
-        LocalDate fechaInicial, fechaFinal;
         if (fechaActual.getDayOfMonth() < 15) {
             fechaInicial = fechaActual.withDayOfMonth(15).minusMonths(1);
             int ultimoDiaMes = fechaInicial.lengthOfMonth();
@@ -170,7 +181,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == botonCalcularSalario) {
-            CalcularSalario();
+            calcularSalario();
             return;
         }
         if (e.getSource() == botonIngresarEmpleados) {
@@ -183,8 +194,38 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         }
     }
 
-    private void CalcularSalario() {
+    private void calcularSalario() {
+        float salarioBase = Float.parseFloat(textSalarioBase.getText()) / 2;
+        // Se divide el salario base entre 2 para que sea por quincena
+        float tasaSalario = Float.parseFloat(textTasa.getText());
+        int horasTrabajadas = Integer.parseInt(textHoras.getText());
+        int festivosTrabajados = Integer.parseInt(textHoras.getText());
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        int antiguedad = year - LocalDate.parse(antiguedadEmp, formatter).getYear();
+        // Se calcula la antigüedad del empleado
+
+        float sueldoTotal = salarioBase + (tasaSalario * horasTrabajadas);
+        // Sueldo base más la tasa de salario por horas trabajadas
+
+        String[] semanas = vacaciones.split(","); // Se obtienen las semanas de vacaciones del empleado
+        for (String semana : semanas) {
+            LocalDate fecha = LocalDate.now()
+                    .with(WeekFields.ISO.weekOfYear(), Integer.parseInt(semana))
+                    .with(WeekFields.ISO.weekBasedYear(), year);
+
+            if (fecha.isAfter(fechaInicial) && fecha.isBefore(fechaFinal))
+                sueldoTotal += antiguedad * 0.1 * salarioBase; // Se calcula el bono de vacaciones si corresponde
+        }
+
+        sueldoTotal += festivosTrabajados * (salarioBase / 14) * 3; // Se agrega el pago por festivos trabajados
+
+        if (dates.contains(fechaFinal))// se paga el bonus trimestral
+            sueldoTotal += salarioBase * 0.1;
+
+        if (fechaFinal.equals(LocalDate.of(year, 12, 15)))
+            sueldoTotal += salarioBase * 3;
+        JOptionPane.showMessageDialog(null, "El sueldo total es: " + sueldoTotal);
     }
 
     private void IngresarEmpleados() {
@@ -212,6 +253,33 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     }
 
     @Override
+    public void focusLost(FocusEvent e) {
+        if (e.getSource() == textID && textID.getText().length() > 0) {
+            try {
+                ResultSet resultSet = stmt.executeQuery(
+                        "select e.id,e.Nombre, FechaContratacion, p.Nombre, TipoContrato, " +
+                                "SalarioBase,TasaSalario, semanasVacaciones " +
+                                "from empleado e inner join puesto p on e.idPuesto = p.id WHERE e.id="
+                                + textID.getText());
+                resultSet.next();
+                textNombre.setText(resultSet.getString(2));
+                textAntiguedad.setText(resultSet.getString(3));
+                antiguedadEmp = resultSet.getString(3);
+                textSalarioBase.setText("" + resultSet.getInt(6));
+                textTipoContrato.setText(resultSet.getString(5));
+                textPuesto.setText(resultSet.getString(4));
+                textTasa.setText("" + resultSet.getInt(7));
+                vacaciones = resultSet.getString(8);
+                revalidate();
+            } catch (SQLException err) {
+                JOptionPane.showMessageDialog(null, "Error. No se Encontro el empleado con este ID");
+                System.err.println(err);
+            }
+            return;
+        }
+    }
+
+    @Override
     public void componentResized(ComponentEvent e) {
         ajustaMedidas();
     }
@@ -234,6 +302,8 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         textTasa.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
         labelHoras.setBounds(getAncho(0.05), getAltoo(0.05) + (cont += 35), getAncho(0.1) + 20, 30);
         textHoras.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
+        labelFestivos.setBounds(getAncho(0.05), getAltoo(0.05) + (cont += 35), getAncho(0.1) + 20, 30);
+        textFestivos.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
         labelFecha.setBounds(getAncho(0.05), getAltoo(0.05) + (cont += 35), getAncho(0.1) + 20, 30);
         labelPeriodo.setBounds(getAncho(0.15) + 20, getAltoo(0.05) + cont, getAncho(0.45) - 20, 30);
         botonCalcularSalario.setBounds(getAncho(0.15) + 20, getAltoo(0.15) + cont, getAncho(0.20), 30);
@@ -242,7 +312,6 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         revalidate();
         validate();
         repaint();
-        update(this.getGraphics());
     }
 
     private int getAncho(double d) {
@@ -271,29 +340,5 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     @Override
     public void focusGained(FocusEvent e) {
 
-    }
-
-    @Override
-    public void focusLost(FocusEvent e) {
-        if (e.getSource() == textID && textID.getText().length() > 0) {
-            try {
-                ResultSet resultSet = stmt.executeQuery(
-                        "select e.id,e.Nombre, FechaContratacion, p.Nombre, TipoContrato, " +
-                                "SalarioBase,TasaSalario " +
-                                "from empleado e inner join puesto p on e.idPuesto = p.id WHERE e.id="
-                                + textID.getText());
-                resultSet.next();
-                textNombre.setText(resultSet.getString(2));
-                textAntiguedad.setText(resultSet.getString(3));
-                textSalarioBase.setText(resultSet.getString(6));
-                textTipoContrato.setText(resultSet.getString(5));
-                textPuesto.setText(resultSet.getString(4));
-                textTasa.setText(resultSet.getString(7));
-                revalidate();
-            } catch (SQLException err) {
-                JOptionPane.showMessageDialog(null, "Error. No se Encontro el empleado con este ID");
-            }
-            return;
-        }
     }
 }
