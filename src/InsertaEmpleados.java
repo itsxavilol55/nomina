@@ -132,6 +132,8 @@ public class InsertaEmpleados extends JFrame implements ActionListener, Componen
             JOptionPane.showMessageDialog(null, "Empleado Insertado Correctamente");
         } catch (SQLException err) {
             JOptionPane.showMessageDialog(null, "Empleado no fue Insertado Correctamente");
+        } catch (Exception err) {
+            JOptionPane.showMessageDialog(null, "Empleado no fue Insertado Correctamente");
         }
     }
 

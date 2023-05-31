@@ -45,10 +45,10 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     private void interfaz() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 600);
+        setSize(1000, 600);
         setLocationRelativeTo(null);
         setLayout(null);
-        setMinimumSize(new Dimension(850, 500));
+        setMinimumSize(new Dimension(1000, 500));
         paneltabla = new JPanel();
         panelIngresar = new InsertaEmpleados();
         panelMostrar = new JFrame("Mostrar Empleados");
@@ -181,7 +181,12 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == botonCalcularSalario) {
-            calcularSalario();
+            try {
+                calcularSalario();
+            } catch (Exception err) {
+                JOptionPane.showMessageDialog(null, "Hay algun dato incorrecto");
+                System.err.println(err);
+            }
             return;
         }
         if (e.getSource() == botonIngresarEmpleados) {
@@ -199,32 +204,30 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         // Se divide el salario base entre 2 para que sea por quincena
         float tasaSalario = Float.parseFloat(textTasa.getText());
         int horasTrabajadas = Integer.parseInt(textHoras.getText());
-        int festivosTrabajados = Integer.parseInt(textHoras.getText());
+        int festivosTrabajados = Integer.parseInt(textFestivos.getText());
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         int antiguedad = year - LocalDate.parse(antiguedadEmp, formatter).getYear();
         // Se calcula la antigüedad del empleado
-
-        float sueldoTotal = salarioBase + (tasaSalario * horasTrabajadas);
+        double sueldoTotal = salarioBase + (tasaSalario * horasTrabajadas);
         // Sueldo base más la tasa de salario por horas trabajadas
-
         String[] semanas = vacaciones.split(","); // Se obtienen las semanas de vacaciones del empleado
         for (String semana : semanas) {
             LocalDate fecha = LocalDate.now()
                     .with(WeekFields.ISO.weekOfYear(), Integer.parseInt(semana))
                     .with(WeekFields.ISO.weekBasedYear(), year);
-
             if (fecha.isAfter(fechaInicial) && fecha.isBefore(fechaFinal))
                 sueldoTotal += antiguedad * 0.1 * salarioBase; // Se calcula el bono de vacaciones si corresponde
         }
-
-        sueldoTotal += festivosTrabajados * (salarioBase / 14) * 3; // Se agrega el pago por festivos trabajados
-
+        sueldoTotal = sueldoTotal + (festivosTrabajados * (salarioBase / 14) * 3);
+        // Se agrega el pago por festivos trabajados
         if (dates.contains(fechaFinal))// se paga el bonus trimestral
             sueldoTotal += salarioBase * 0.1;
-
-        if (fechaFinal.equals(LocalDate.of(year, 12, 15)))
+        if (fechaFinal.equals(LocalDate.of(year, 12, 15)))// se paga el bonus anual
             sueldoTotal += salarioBase * 3;
+        // impuestos
+        sueldoTotal = sueldoTotal - (sueldoTotal * 0.12);// Impuesto Sobre la Renta 12%
+        sueldoTotal = sueldoTotal - (sueldoTotal * 0.067);// pago la seguridad social 6.7%
         JOptionPane.showMessageDialog(null, "El sueldo total es: " + sueldoTotal);
     }
 
