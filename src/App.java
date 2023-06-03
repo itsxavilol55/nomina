@@ -2,6 +2,11 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -10,6 +15,10 @@ import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 
 public class App extends JFrame implements ActionListener, ComponentListener, FocusListener {
     private JLabel labelID, labelNombre, labelAntiguedad, labelTasa, labelSalarioBase, labelTipoContrato, labelPuesto,
@@ -23,12 +32,17 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     private JTable tabla;
     private DefaultTableModel modelo;
     private JPanel paneltabla;
+    private PDPageContentStream contentStream, contentStream2;
+    private static String filePath = "C:/nomina.pdf";
+    private static File file;
+    private PDDocument document;
     private String vacaciones, antiguedadEmp;
     private LocalDate fechaInicial, fechaFinal;
     private ArrayList<LocalDate> dates = new ArrayList<>();
     private int year;
 
     public static void main(String[] args) {
+        file = new File(filePath);
         new App();
     }
 
@@ -73,7 +87,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         labelFecha = new JLabel("Periodo de fecha:");
         labelPeriodo = new JLabel(fecha());
         // botones
-        botonCalcularSalario = new JButton("Calcular salario");
+        botonCalcularSalario = new JButton("Generar Nomina");
         add(botonCalcularSalario);
 
         botonMostrarEmpleados = new JButton("Mostrar empleados");
@@ -182,6 +196,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == botonCalcularSalario) {
             try {
+                documento();// metodo que lee el documento
                 calcularSalario();
             } catch (Exception err) {
                 JOptionPane.showMessageDialog(null, "Hay algun dato incorrecto");
@@ -199,8 +214,26 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         }
     }
 
+    private void documento() {
+        try {
+            InputStream is = new FileInputStream(file);
+            document = PDDocument.load(is);
+            PDPage page = document.getPage(0);
+            PDPage page2 = document.getPage(1);
+            contentStream = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.APPEND, true, true);
+            contentStream2 = new PDPageContentStream(document, page2, PDPageContentStream.AppendMode.APPEND, true,
+                    true);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void calcularSalario() {
         float salarioBase = Float.parseFloat(textSalarioBase.getText()) / 2;
+        insertaTexto("" + textNombre.getText(), 130, 630);
+        insertaTexto("" + textID.getText(), 90, 615);
+        insertaTexto("" + textPuesto.getText(), 120, 600);
+        insertaTexto("" + salarioBase, 150, 585);
         // Se divide el salario base entre 2 para que sea por quincena
         float tasaSalario = Float.parseFloat(textTasa.getText());
         int horasTrabajadas = Integer.parseInt(textHoras.getText());
@@ -209,26 +242,96 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         int antiguedad = year - LocalDate.parse(antiguedadEmp, formatter).getYear();
         // Se calcula la antigüedad del empleado
+        insertaTexto("" + antiguedad + " años", 150, 570);
+        insertaTexto("" + textTipoContrato.getText(), 180, 555);
+        insertaTexto("" + textTasa.getText(), 160, 540);
+        insertaTexto("" + fechaInicial + " a " + fechaFinal, 210, 495);
+        insertaTexto("" + horasTrabajadas + " horas", 190, 480);
+        insertaTexto("" + festivosTrabajados + " dias", 230, 465);
+        insertaTexto("Salario base", 60, 390);
+        insertaTexto("" + salarioBase, 500, 390);
         double sueldoTotal = salarioBase + (tasaSalario * horasTrabajadas);
+        insertaTexto("Pago por horas trabajadas", 60, 375);
+        insertaTexto("" + (tasaSalario * horasTrabajadas), 500, 375);
         // Sueldo base más la tasa de salario por horas trabajadas
         String[] semanas = vacaciones.split(","); // Se obtienen las semanas de vacaciones del empleado
+        int cont = 360;
         for (String semana : semanas) {
             LocalDate fecha = LocalDate.now()
                     .with(WeekFields.ISO.weekOfYear(), Integer.parseInt(semana))
                     .with(WeekFields.ISO.weekBasedYear(), year);
-            if (fecha.isAfter(fechaInicial) && fecha.isBefore(fechaFinal))
+            if (fecha.isAfter(fechaInicial) && fecha.isBefore(fechaFinal)) {
                 sueldoTotal += antiguedad * 0.1 * salarioBase; // Se calcula el bono de vacaciones si corresponde
+                insertaTexto("Pago por Vacaciones, semana: " + fecha, 60, cont);
+                insertaTexto("" + Math.round(antiguedad * 0.1 * salarioBase), 500, cont);
+                cont -= 15;
+            }
         }
-        sueldoTotal = sueldoTotal + (festivosTrabajados * (salarioBase / 14) * 3);
-        // Se agrega el pago por festivos trabajados
-        if (dates.contains(fechaFinal))// se paga el bonus trimestral
+        if (festivosTrabajados != 0) {// Se agrega el pago por festivos trabajados
+            sueldoTotal = sueldoTotal + (festivosTrabajados * (salarioBase / 14) * 3);
+            insertaTexto("Pago por dias festivos ", 60, cont);
+            insertaTexto("" + Math.round(festivosTrabajados * (salarioBase / 14) * 3), 500, cont);
+            cont -= 15;
+        }
+        if (dates.contains(fechaFinal)) // se paga el bonus trimestral
+        {
             sueldoTotal += salarioBase * 0.1;
+            insertaTexto("Bonus Trimestral", 60, cont);
+            insertaTexto("" + Math.round(salarioBase * 0.1), 500, cont);
+            cont -= 15;
+        }
         if (fechaFinal.equals(LocalDate.of(year, 12, 15)))// se paga el bonus anual
+        {
             sueldoTotal += salarioBase * 3;
+            insertaTexto("Bonus Anual", 60, cont);
+            insertaTexto("" + Math.round(salarioBase * 3), 500, cont);
+            cont -= 15;
+        }
+        insertaTexto("Sueldo total sin impuestos: ", 60, cont);
+        insertaTexto("" + Math.round(sueldoTotal), 500, cont);
         // impuestos
         sueldoTotal = sueldoTotal - (sueldoTotal * 0.12);// Impuesto Sobre la Renta 12%
+        insertaTexto2("Impuesto sobre la renta (12%)", 60, 715);
+        insertaTexto2("" + Math.floor(sueldoTotal * 0.12), 500, 715);
         sueldoTotal = sueldoTotal - (sueldoTotal * 0.067);// pago la seguridad social 6.7%
+        insertaTexto2("Pago de la segurida social (6.7%)", 60, 700);
+        insertaTexto2("" + Math.floor(sueldoTotal * 0.067), 500, 700);
+        insertaTexto2("Sueldo Bruto", 60, 685);
+        insertaTexto2("" + Math.floor(sueldoTotal), 500, 685);
+        try {
+            contentStream.close();
+            contentStream2.close();
+            // Guardar los cambios en el archivo modificado
+            document.save("C:/java/" + textNombre.getText().replaceAll(" ", "") + fechaFinal + ".pdf");
+            document.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         JOptionPane.showMessageDialog(null, "El sueldo total es: " + sueldoTotal);
+    }
+
+    private void insertaTexto(String cadena, int tx, int ty) {
+        try {
+            contentStream.beginText();
+            contentStream.setFont(PDType1Font.HELVETICA, 12);
+            contentStream.newLineAtOffset(tx, ty);
+            contentStream.showText(cadena);
+            contentStream.endText();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void insertaTexto2(String cadena, int tx, int ty) {
+        try {
+            contentStream2.beginText();
+            contentStream2.setFont(PDType1Font.HELVETICA, 12);
+            contentStream2.newLineAtOffset(tx, ty);
+            contentStream2.showText(cadena);
+            contentStream2.endText();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void IngresarEmpleados() {
