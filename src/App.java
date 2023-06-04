@@ -181,6 +181,7 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
     }
 
     private String fecha() {
+        // LocalDate fechaActual = LocalDate.of(2024, 3, 5);
         LocalDate fechaActual = LocalDate.now();
         if (fechaActual.getDayOfMonth() < 15) {
             fechaInicial = fechaActual.withDayOfMonth(15).minusMonths(1);
@@ -195,8 +196,8 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
 
     public void actionPerformed(ActionEvent e) {
         if (e.getSource() == botonCalcularSalario) {
+            documento();// metodo que lee el documento
             try {
-                documento();// metodo que lee el documento
                 calcularSalario();
             } catch (Exception err) {
                 JOptionPane.showMessageDialog(null, "Hay algun dato incorrecto");
@@ -225,46 +226,51 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
                     true);
         } catch (IOException e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "NO se encontro el documento");
         }
     }
 
     private void calcularSalario() {
+        // Se divide el salario base entre 2 para que sea por quincena
         float salarioBase = Float.parseFloat(textSalarioBase.getText()) / 2;
+        int tasaSalario = Integer.parseInt(textTasa.getText());
+        int horasTrabajadas = Integer.parseInt(textHoras.getText().replaceAll("-", ""));
+        int festivosTrabajados = Integer.parseInt(textFestivos.getText().replaceAll("-", ""));
+        // se ingresan los datos al documento
         insertaTexto("" + textNombre.getText(), 130, 630);
         insertaTexto("" + textID.getText(), 90, 615);
         insertaTexto("" + textPuesto.getText(), 120, 600);
         insertaTexto("" + salarioBase, 150, 585);
-        // Se divide el salario base entre 2 para que sea por quincena
-        float tasaSalario = Float.parseFloat(textTasa.getText());
-        int horasTrabajadas = Integer.parseInt(textHoras.getText());
-        int festivosTrabajados = Integer.parseInt(textFestivos.getText());
-
+        // Se calcula la antigüedad del empleado
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         int antiguedad = year - LocalDate.parse(antiguedadEmp, formatter).getYear();
-        // Se calcula la antigüedad del empleado
+        // Sueldo base más la tasa de salario por horas trabajadas
+        double sueldoTotal = salarioBase + (tasaSalario * horasTrabajadas);
+        // se ingresan los datos al documento
         insertaTexto("" + antiguedad + " años", 150, 570);
         insertaTexto("" + textTipoContrato.getText(), 180, 555);
         insertaTexto("" + textTasa.getText(), 160, 540);
-        insertaTexto("" + fechaInicial + " a " + fechaFinal, 210, 495);
+        insertaTexto("" + fecha(), 210, 495);
         insertaTexto("" + horasTrabajadas + " horas", 190, 480);
         insertaTexto("" + festivosTrabajados + " dias", 230, 465);
         insertaTexto("Salario base", 60, 390);
         insertaTexto("" + salarioBase, 500, 390);
-        double sueldoTotal = salarioBase + (tasaSalario * horasTrabajadas);
         insertaTexto("Pago por horas trabajadas", 60, 375);
         insertaTexto("" + (tasaSalario * horasTrabajadas), 500, 375);
-        // Sueldo base más la tasa de salario por horas trabajadas
-        String[] semanas = vacaciones.split(","); // Se obtienen las semanas de vacaciones del empleado
+
         int cont = 360;
-        for (String semana : semanas) {
-            LocalDate fecha = LocalDate.now()
-                    .with(WeekFields.ISO.weekOfYear(), Integer.parseInt(semana))
-                    .with(WeekFields.ISO.weekBasedYear(), year);
-            if (fecha.isAfter(fechaInicial) && fecha.isBefore(fechaFinal)) {
-                sueldoTotal += antiguedad * 0.1 * salarioBase; // Se calcula el bono de vacaciones si corresponde
-                insertaTexto("Pago por Vacaciones, semana: " + fecha, 60, cont);
-                insertaTexto("" + Math.round(antiguedad * 0.1 * salarioBase), 500, cont);
-                cont -= 15;
+        if (vacaciones != "") {
+            String[] semanas = vacaciones.split(","); // Se obtienen las semanas de vacaciones del empleado
+            for (String semana : semanas) {
+                LocalDate fecha = LocalDate.now()
+                        .with(WeekFields.ISO.weekOfYear(), Integer.parseInt(semana))
+                        .with(WeekFields.ISO.weekBasedYear(), year);
+                if (fecha.isAfter(fechaInicial) && fecha.isBefore(fechaFinal)) {
+                    sueldoTotal += antiguedad * 0.1 * salarioBase; // Se calcula el bono de vacaciones si corresponde
+                    insertaTexto("Pago por Vacaciones, semana: " + fecha, 60, cont);
+                    insertaTexto("" + Math.round(antiguedad * 0.1 * salarioBase), 500, cont);
+                    cont -= 15;
+                }
             }
         }
         if (festivosTrabajados != 0) {// Se agrega el pago por festivos trabajados
@@ -290,12 +296,12 @@ public class App extends JFrame implements ActionListener, ComponentListener, Fo
         insertaTexto("Sueldo total sin impuestos: ", 60, cont);
         insertaTexto("" + Math.round(sueldoTotal), 500, cont);
         // impuestos
-        sueldoTotal = sueldoTotal - (sueldoTotal * 0.12);// Impuesto Sobre la Renta 12%
         insertaTexto2("Impuesto sobre la renta (12%)", 60, 715);
         insertaTexto2("" + Math.floor(sueldoTotal * 0.12), 500, 715);
-        sueldoTotal = sueldoTotal - (sueldoTotal * 0.067);// pago la seguridad social 6.7%
+        sueldoTotal = sueldoTotal - (sueldoTotal * 0.12);// Impuesto Sobre la Renta 12%
         insertaTexto2("Pago de la segurida social (6.7%)", 60, 700);
         insertaTexto2("" + Math.floor(sueldoTotal * 0.067), 500, 700);
+        sueldoTotal = sueldoTotal - (sueldoTotal * 0.067);// pago la seguridad social 6.7%
         insertaTexto2("Sueldo Bruto", 60, 685);
         insertaTexto2("" + Math.floor(sueldoTotal), 500, 685);
         try {
